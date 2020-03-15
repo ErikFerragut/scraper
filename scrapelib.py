@@ -66,6 +66,11 @@ def to_iterator(key, type, value, options=[]):
     elif type == 'all-but':
         assert isinstance(value, list), 'Type all-but must have list value'
         return [(key,option) for option in options if option not in value ]
+    elif type == 'slice':
+        from_,to_,by_ = map(int, value.split())
+        return ((key,x) for x in range(from_,to_,by_))
+    else:
+        raise KeyError('Unknown variable range type: ' + type)
     
 
 def form_inputs_to_input_generator(form, form_inputs):
@@ -172,7 +177,7 @@ def fill_and_submit(browser, form, fill_with, submit_with):
         if item_type_data['type'] == 'text':
             text_element = browser.find_element_by_id(k)
             text_element.clear()
-            text_element.send_keys(v)
+            text_element.send_keys(str(v))
 
         elif item_type_data['type'] == 'select':
             select_element = Select(browser.find_element_by_id(k))
@@ -226,6 +231,10 @@ def get_tables(browser, output_table):
         tables = [tables[output_table['which']-1]]
     elif table_select == 'by positions':
         tables = [ tables[i-1] for i in tables[output_table['which']] ]
+    elif table_select == 'flatten':
+        tables = [
+            pd.DataFrame([ t.columns[0] + tuple(t.values.flatten()) for t in tables ])
+        ]
     else:
         raise KeyError('Unknown select "{}" for output_table'.format(table_select))
 

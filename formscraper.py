@@ -45,9 +45,6 @@ def scan(debug, url, output, form_tag):
 @click.option('--max-to_work', default=0, help='max number of inputs to process; 0 for all')
 @click.argument('config')
 def scrape(debug, kth, n, config, max_to_work):
-    modulo = (n, kth-1)
-
-
     # 1. read globals and open DB, set derivative values
     G = yaml.load(open(config), yaml.Loader)
     G['form'] = yaml.load(open(G['form_yaml']), yaml.Loader)[G['input_form_id']]
@@ -74,13 +71,13 @@ def scrape(debug, kth, n, config, max_to_work):
     # 2. make sure the inputs and results tables are up to date
     inputs  = update_inputs_table(con, G)
     results = updated_results_table(con)
-    results = results[ results.index % modulo[0] == modulo[1] ]
+    results = results[ results.index % n == (kth - 1) ]
 
     # 3. grab a not started input from results and see its inputs
     browser = create_new_browser(not debug)     # create a browser instance
     for i, ind in enumerate(results.index):
         print('Working on input', ind, 'which is', i+1, 'of', len(results.index))
-        fill_with = inputs.loc[ind]
+        fill_with = dict(inputs.loc[ind])
         url = fill_with.pop('url')
         submit_with = { fill_with.pop('subkey'): fill_with.pop('subval') }
         set_status(con, ind, 'started')
@@ -91,8 +88,8 @@ def scrape(debug, kth, n, config, max_to_work):
         assert wait_for(browser, *form_wait_elt), 'Form not loading'
         time.sleep(form_throttle)
         page_form = get_forms(bs(browser.page_source, 'lxml'))[G['input_form_id']]
-        assert page_form == G['form'], 'Page form has changed! OLD: {}\nNEW: {}'.format(
-            G['form'], page_form)
+        if page_form != G['form']:
+            print('WARNING: page form has changed')
 
         print('Filling and submitting form')
         fill_and_submit(browser, G['form'], fill_with, submit_with)
