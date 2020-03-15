@@ -1,4 +1,9 @@
 #+STARTUP: indent
+
+#+BEGIN_CENTER
+This is V0.1 and it doesn't quite work on the example.
+#+END_CENTER
+
 * FormScraper
 FormScraper is a specialized web-scraping application for the
 particular case where you want to fill out and submit a form and then
