@@ -13,6 +13,7 @@ sqlalchemy = "*"
 beautifulsoup4 = "*"
 lxml = "*"
 pyyaml = "*"
+click = "*"
 
 [requires]
 python_version = "3.7"

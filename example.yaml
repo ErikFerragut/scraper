@@ -1,0 +1,42 @@
+url: http://www.car-part.com
+
+form_yaml: example_form.yaml
+
+input_form_id: 1
+
+form_inputs:
+  3:
+    type: const
+    value: '20901'
+  year:
+    type: list
+    value:
+      - '2020'
+      - '2019'
+      - '2018'
+  model:
+    type: list
+    value:
+      - Chevy Bolt
+      - Chevy Volt
+      - Dodge Colt Vista
+      - Tesla S
+  4:
+    type: const
+    value: Radiator
+  Loc:
+    type: const
+    value: Mid Atlantic
+  5:
+    type: const
+    value: Price
+
+submit_with:
+  name: Search Car Part Inventory
+
+output_table:
+  select: by position
+  which: 2
+  table_name: parts
+
+output_db: sqlite:///parts.db

@@ -1,0 +1,195 @@
+#+STARTUP: indent
+* FormScraper
+FormScraper is a specialized web-scraping application for the
+particular case where you want to fill out and submit a form and then
+collect the results into a table.
+
+If you are looking for something more general then you should probably
+read the BeautifulSoup docs.  Also, there might be a specific Python
+package for your intended application.  (Try ~pip3 search scrape~.)
+
+It is built using Selenium, BeautifulSoup4, SQLAlchemy, and Pandas.
+
+** About
+The Form Scraper contains the following components:
+1. A query generator that produces the set of all queries, and
+   possibly allows you to break it down (e.g., year 2019, 2018, etc.)
+2. A selenium task that runs a collection of queries and processes the
+   result to return a record
+   1. Pull up the query page using selenium (headless or in debug mode)
+   2. Fill in the details and push go
+      1. dictionary betweeen fields and selections, handling text,
+         radio buttons, selections, and then, pushing the submit
+         button.
+   3. Parse the response into a record
+      1. Table-based parser; map fields to reecord
+3. A database that stores the query and the reponse
+4. A manager that keeps track of open, closed, and dead queries,
+   launches tasks, and stores results in a db.  You can run multiple
+   simultaneous jobs.
+
+The code outputs its progress to the screen while updating a
+database.  It has only been tested with SQLite databases.
+
+When scraping, three tables are used. The ~inputs~ table manages the
+inputs required to do the scraping, with one record per input, and
+assigns them each a unique integer id.  The ~results~ table tracks
+the status of inputs as 'not started', 'started', 'done', and 'error'.
+For each table type of interest produced by the query, a table is
+created in the database.  For example, suppose a submitted form
+returns a page with a table showing some author detail and then some
+reviews from the paper.  If you want both of them, you can specify
+that in the config and name your tables for archiving the results.
+You would then end up with an authors table and a reviews table in
+your database that compiles results across all queries.
+
+/It is assumed that the table headers are the same in each response./
+
+** How to Install
+The code uses Firefox, so make sure that is installed. Also install
+geckodriver.
+#+BEGIN_SRC bash
+brew install geckodriver
+pipenv --three            # if needed
+pipenv install            # installs dependencies from the Pipfile
+#+END_SRC
+
+** How to Use
+
+*** Grab the form meta-data
+#+BEGIN_SRC bash
+pipenv run python formscraper.py scan --url http://www.car-part.com/ --form-tag body
+#+END_SRC
+
+By default it will look for ~form~ tags. Often, pages don't bother to
+use those tags, so you can pick a different one. Here we've chosen
+~body~.
+
+If you want to see the page pop up in a browser, which is useful when
+things go wrong, add the ~--debug~ option.
+
+The output prints to screen.  You can indicate a file to write to with
+the ~--output~ option.
+
+#+BEGIN_SRC bash
+pipenv run python formscraper.py scan --url http://www.car-part.com/ \
+     --form-tag body --output example_form.yaml
+#+END_SRC
+
+*** Construct your config file
+Now the hard part: build the config file.  Here is a summary of the
+fields it uses.
+
+The most important and complicated part is probably the ~form_inputs~
+field which contains a list of html id's and what values to put into
+them.  Not all form entries need to be specified if the site's default
+value is acceptable.  To specify the values to enter, keep in mind
+that we are specifying a range of values.  At this time, the code only
+supports a full Cartesian product of possiblilites.  That is, each
+value that varies will vary over all its values, despite what the
+other values are.  You can't, for example, have it only choose years
+up to 1986 if the make is Datsun, but up to the present for Ford.
+
+To put in the same value all the time, the ~type~ is set to 'const'
+and the string to enter is placed in ~value~. Note that numbers must
+be entered as strings (in single-quotes).  If there is more than one
+option, then you can use ~type~ set to 'list' and have ~value~
+assigned a list of values. (In YAML, this can be done with square
+brackets, e.g., ~['dog', 'cat']~ or with multiple lines, each starting
+with a dash and properly indented.)  Two more options for ~type~ are
+'all' and 'all-but'.  With ~all~, the full list of options shown in
+the forms data will be used.  In ~all-but', it will be that full list
+except the things listed under ~value~ will be excluded.
+
+It is unlikely that using the full list will work, since usually the
+default value is also shown as an option in the forms.  Also,
+modifying the forms YAML file will trip a change detection test and
+prevent the code from running.
+
+The other fields are:
+- ~url~ is the url where the form is found
+- ~form_yaml~ is the filename for the output from the scan command
+- ~input_form_id~ is the key for the form to use in the form file
+- ~submit_with~ is submit button id (check form yaml's buttons key)
+- ~output_db~ is the SQLAlchemy connection string for the db
+- ~output_table~ determines which response tables to track
+  - ~select~ is 'by position' or 'by positions'
+  - ~which~ is either an index (1-up) or a list of such indices
+  - ~table_name(s)~ is the DB table name(s) to write to, resp.
+- ~form_wait~ and ~table_wait~ each have four possible options
+  - ~by~ is either 'class' or 'id' and is what you are waiting for
+  - ~value~ is the class name or id value to wait for
+  - ~delay~ is how long to wait before giving up
+  - ~throttle~ (optional) is an extra after-load wait time
+
+All of these fields are required, except for the ~...wait~ fields.
+If they are specified, the ~throttle~ sub-fields are optional.
+
+In the ~car-parts.com~ example, we can construct the following
+~example.yaml~ file, where the form data has been saved to
+~example_form.yaml~.
+#+BEGIN_SRC yaml
+url: http://www.car-part.com
+
+form_yaml: exaple_form.yaml
+
+input_form_id: 1
+
+form_inputs:
+  3:
+    type: const
+    value: 20901
+  year:
+    type: list
+    value:
+      - '2020'
+      - '2019'
+      - '2018'
+  model:
+    type: list
+    value:
+      - Chevy Bolt
+      - Chevy Volt
+      - Dodge Colt Vista
+      - Tesla S
+  4:
+    type: const
+    value: Radio/CD (see also A/C Control or TV Screen)
+  Loc:
+    type: const
+    value: Mid Atlantic
+  5:
+    type: const
+    value: Price
+#+END_SRC
+
+Of course, this doesn't work.
+
+*** Run in one or more batches
+#+BEGIN_SRC bash
+pipenv run python formscraper.py scrape example.yaml
+#+END_SRC
+
+Doesn't quite work.
+
+** Handling errors
+
+*** When no data means no table
+If the result is an empty table, then there's no problem, but if
+there's no table, then it can throw an error. There's an optional
+string to check for whose presence indicates there's no tables; this
+will avoid the error.
+
+*** Server errors
+These are hard to predict, but if they happen where expected, the a
+snapshot is taken and opened (in Mac OS) and the status is set to
+'error' so that it will be skipped in the future.
+
+*** Losing internet access
+If you lose internet access, then something may not load or send and
+it will crash gracelessly.
+
+*** Other errors
+Other errors are likely due to assumptions about the web page that are
+wrong for a particular application.  Generalization of the code would
+be difficult.

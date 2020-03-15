@@ -92,9 +92,9 @@ def create_new_browser(headless=True):
     return browser
 
 
-def get_forms(soup):    
+def get_forms(soup, form_container='form'):
     forms = {}
-    for form in soup.find_all('form'):
+    for form in soup.find_all(form_container):
         newnum = one_up()
         
         id = form.get('id') or newnum()
@@ -185,7 +185,11 @@ def fill_and_submit(browser, form, fill_with, submit_with):
                 'Value {} had {} element matches'.format(v,len(label_lements))
             label_elements[0].click()
 
-    submit_button = browser.find_element_by_id('submit-h2h')
+    if 'id' in submit_with.keys():
+        submit_button = browser.find_element_by_id(submit_with['id'])
+    elif 'name' in submit_with.keys():
+        submit_button = browser.find_element_by_name(submit_with['name'])
+        
     submit_button.click()
     # if this doesn't work, do: submit_button.send_keys(Keys.ENTER)
 
@@ -195,11 +199,11 @@ def wait_for(browser, what_type, what_value, delay):
     for the class "table-wrapper" to load, returning True if it did,
     False o/w.  Can also use By.ID.
     '''    
-    wait_for = (what_type, what_value)
+    elt_wait_for = (what_type, what_value)
     delay = 3 # seconds
     try:
         myElem = WebDriverWait(browser, delay).until(
-            EC.presence_of_element_located(wait_for))
+            EC.presence_of_element_located(elt_wait_for))
         return True
     except TimeoutException:
         return False
@@ -246,7 +250,8 @@ def update_inputs_table(con, G):
     inputs = pd.DataFrame(list(
         form_inputs_to_input_generator(G['form'], G['form_inputs'])))
     inputs['url'] = G['url']
-    inputs['sub'] = G['submit_with']
+    inputs['subkey'] = list(G['submit_with'].keys())[0]
+    inputs['subval'] = list(G['submit_with'].values())[0]
 
     if 'inputs' in con.engine.table_names():  # read the existing inputs
         old_inputs = pd.read_sql('select * from inputs', con, index_col='id')
