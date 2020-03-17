@@ -108,8 +108,9 @@ except the things listed under ~value~ will be excluded.
 
 It is unlikely that using the full list will work, since usually the
 default value is also shown as an option in the forms.  Also,
-modifying the forms YAML file will trip a change detection test and
-prevent the code from running.
+modifying the forms YAML file is an option, though it will trip a
+change detection test, making actual form changes undetectable, and
+print a warning with each input processed.
 
 The other fields are:
 - ~url~ is the url where the form is found

@@ -42,7 +42,7 @@ def scan(debug, url, output, form_tag):
 @click.option('--debug', is_flag=True, help='use a visible browser')
 @click.option('--kth', default=1, help='process kth input of every n')
 @click.option('--n', default=1, help='of every n inputs will process the kth')
-@click.option('--max-to_work', default=0, help='max number of inputs to process; 0 for all')
+@click.option('--max-to-work', default=0, help='max number of inputs to process; 0 for all')
 @click.argument('config')
 def scrape(debug, kth, n, config, max_to_work):
     # 1. read globals and open DB, set derivative values
@@ -75,16 +75,23 @@ def scrape(debug, kth, n, config, max_to_work):
 
     # 3. grab a not started input from results and see its inputs
     browser = create_new_browser(not debug)     # create a browser instance
+    last_url = ''
     for i, ind in enumerate(results.index):
         print('Working on input', ind, 'which is', i+1, 'of', len(results.index))
         fill_with = dict(inputs.loc[ind])
-        url = fill_with.pop('url')
+        next_url = fill_with.pop('url')
         submit_with = { fill_with.pop('subkey'): fill_with.pop('subval') }
         set_status(con, ind, 'started')
 
 
         print('Going to form page, verifying form has not changed')
-        browser.get(G['url'])
+        if G.get('form-on-table-page') and last_url != '':
+            print('-- form is also on the table page')
+        elif last_url == next_url:
+            browser.back()
+        else:
+            browser.get(next_url)
+            last_url = next_url
         assert wait_for(browser, *form_wait_elt), 'Form not loading'
         time.sleep(form_throttle)
         page_form = get_forms(bs(browser.page_source, 'lxml'))[G['input_form_id']]
