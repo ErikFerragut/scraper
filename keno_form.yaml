@@ -1,0 +1,30 @@
+aspnetForm:
+  buttons: {}
+  id: 1
+  inputs:
+    ctl00_MainContent_ddlRange:
+      name: ctl00$MainContent$ddlRange
+      texts:
+      - "\_-\_20\_"
+      - "\_-\_10\_"
+      - "\_\_\_-\_5\_"
+      - "\_\_\_-\_3\_"
+      - "\_\_\_\_\_1"
+      - "\_\_+\_3\_"
+      - "\_\_+\_5\_"
+      - "+\_10\_"
+      - "+\_20\_"
+      type: select
+      values:
+      - '-19'
+      - '-9'
+      - '-4'
+      - '-2'
+      - '1'
+      - '2'
+      - '4'
+      - '9'
+      - '19'
+    ctl00_MainContent_txtDrawNumber:
+      name: ctl00$MainContent$txtDrawNumber
+      type: text
